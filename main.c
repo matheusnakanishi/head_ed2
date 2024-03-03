@@ -5,7 +5,7 @@ typedef struct {
     int pid;
     int prioridade;
     int tempoEspera;
-}  Processo;
+} *Processo, Heap;
 
 
 int pai(int i) {
@@ -20,12 +20,23 @@ int dir(int i) {
     return (i*2+1);
 }
 
-void subirMax(Processo *heap, int i) {
+Heap criarProcesso(int *id, int prioridade, int tempoEspera) {
+    Heap novo;
+
+    novo.pid = *id;
+    novo.prioridade = prioridade;
+    novo.tempoEspera = tempoEspera;
+    (*id)++;
+
+    return novo;
+}
+
+void subirMax(Processo heap, int i) {
     int p = pai(i);
 
     if (p >= 1) {
         if (heap[i].prioridade > heap[p].prioridade) {
-            Processo aux = heap[i];
+            Heap aux = heap[i];
             heap[i] = heap[p];
             heap[p] = aux;
             subirMax(heap, p);
@@ -33,7 +44,20 @@ void subirMax(Processo *heap, int i) {
     }
 }
 
-void descerMax(Processo *heap, int i, int tamanhoAtual) {
+void subirMin(Processo heap, int i) {
+    int p = pai(i);
+
+    if (p >= 1) {
+        if (heap[i].prioridade < heap[p].prioridade) {
+            Heap aux = heap[i];
+            heap[i] = heap[p];
+            heap[p] = aux;
+            subirMax(heap, p);
+        }
+    }
+}
+
+void descerMax(Processo heap, int i, int tamanhoAtual) {
     int e = esq(i);
     int d = dir(i);
     int maior = i;
@@ -45,73 +69,115 @@ void descerMax(Processo *heap, int i, int tamanhoAtual) {
         maior = d;
 
     if (maior != i) {
-        Processo aux = heap[i];
+        Heap aux = heap[i];
         heap[i] = heap[maior];
         heap[maior] = aux;
         descerMax(heap, maior, tamanhoAtual);
     }
 }
 
-Processo *inserirProcessoMax(Processo *heap, int* tamanhoAtual, Processo novoProcesso) {
-    heap = (Processo*)realloc(heap, sizeof(Processo) * (*tamanhoAtual + 2));
+void descerMin(Processo heap, int i, int tamanhoAtual) {
+    int e = esq(i);
+    int d = dir(i);
+    int menor = i;
+
+    if (e <= tamanhoAtual && heap[e].prioridade < heap[menor].prioridade)
+        menor = e;
+    
+    if (d <= tamanhoAtual && heap[d].prioridade < heap[menor].prioridade)
+        menor = d;
+
+    if (menor != i) {
+        Heap aux = heap[i];
+        heap[i] = heap[menor];
+        heap[menor] = aux;
+        descerMax(heap, menor, tamanhoAtual);
+    }
+}
+
+void inserirProcesso(Processo *heap, int* tamanhoAtual, Processo novoProcesso, int tipoHeap) {
+    *heap = (Processo)realloc(*heap, sizeof(Heap) * (*tamanhoAtual + 2));
     (*tamanhoAtual)++;
 
     heap[*tamanhoAtual] = novoProcesso;
 
-    subirMax(heap, *tamanhoAtual);
+    if (tipoHeap == 0)
+        subirMax(*heap, *tamanhoAtual);
+    else
+        subirMin(*heap, *tamanhoAtual);
 
     return heap;
 }
 
+void removeProcessoTopo(Processo *heap, int* tamanhoAtual, int tipoHeap) {
+    if (heapVazio(tamanhoAtual) == 1)
+        printf("\nHeap Vazio\n");
+    else {
+        heap[1] = heap[*tamanhoAtual];
+        (*tamanhoAtual)--;
+        *heap = (Processo)realloc(*heap, sizeof(Heap) * (*tamanhoAtual + 1));
 
-
-void imprimirProcessos(Processo *heap, int tamanho) {
-    for (int i = 1; i <= tamanho; i++) 
-        printf("[%d] ", heap[i].pid);
-
-    printf("\n");
+        if (tipoHeap == 0)    
+            descerMax(*heap, 1, *tamanhoAtual);
+        else
+            descerMin(*heap, 1, *tamanhoAtual);
+    }
 }
 
+int heapVazio(int tamanhoAtual) {
+    return (tamanhoAtual <= 0)? 1 : 0;
+}
+
+void imprimirProcessos(Processo *heapMax, Processo *heapMin, int tamanho, int fator) {
+    if (fator == 0) {
+        printf("Prioridade\n");
+        printf("Heap Maximo: ");
+        for (int i = 0; i <= tamanho; i++) {
+            printf("[%d] ", (*heapMax)[i].prioridade);
+        }
+        printf("\nHeap Minimo: ");
+        for (int i = 0; i <= tamanho; i++) {
+            printf("[%d] ", (*heapMin)[i].prioridade);
+        }
+    }
+    else {
+        printf("Tempo de Espera\n");
+        printf("Heap Maximo: ");
+        for (int i = 0; i <= tamanho; i++) {
+            printf("[%d] ", (*heapMax)[i].tempoEspera);
+        }
+        printf("\nHeap Minimo: ");
+        for (int i = 0; i <= tamanho; i++) {
+            printf("[%d] ", (*heapMin)[i].tempoEspera);
+        }
+    }
+}
+
+void constroiHeapMax(Processo *heapMax, int tamanho) {
+    int i;
+    int j = (tamanho/2);
+
+    for (i = j; i >= 1; i--)
+        descerMax(*heapMax, i, tamanho);
+}
+
+void constroiHeapMin(Processo *heapMin, int tamanho) {
+    int i;
+    int j = (tamanho/2);
+
+    for (i = j; i >= 1; i--)
+        descerMin(*heapMin, i, tamanho);
+}
 
 int main() {
-    Processo *heapMax = NULL;
-    //int *heapMin = NULL;
-    int tamanhoAtual = 0;
+    Heap novo;
+    Processo heapMax = (Processo)malloc(sizeof(Heap));
+    Processo heapMin = (Processo)malloc(sizeof(Heap));
+    int tamanhoMax = 0, tamanhoMin = 0, id = 1;
 
-    Processo novo;
-    novo.pid = 111;
-    novo.prioridade = 95;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 222;
-    novo.prioridade = 60;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 333;
-    novo.prioridade = 78;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 444;
-    novo.prioridade = 39;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 555;
-    novo.prioridade = 28;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 777;
-    novo.prioridade = 66;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 888;
-    novo.prioridade = 70;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    novo.pid = 999;
-    novo.prioridade = 33;
-    heapMax = inserirProcessoMax(heapMax, &tamanhoAtual, novo);
-
-    imprimirProcessos(heapMax, tamanhoAtual);
+    
+    
+    
 
     return 0;
 }
