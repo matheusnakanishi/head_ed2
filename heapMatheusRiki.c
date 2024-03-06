@@ -20,16 +20,6 @@ int dir(int i) {
     return (i*2+1);
 }
 
-Heap criarProcesso(int id, int prioridade, int tempoEspera) {
-    Heap novo;
-
-    novo.pid = id;
-    novo.prioridade = prioridade;
-    novo.tempoEspera = tempoEspera;
-
-    return novo;
-}
-
 void subirMax(Processo heap, int i) {
     int p = pai(i);
 
@@ -51,7 +41,7 @@ void subirMin(Processo heap, int i) {
             Heap aux = heap[i];
             heap[i] = heap[p];
             heap[p] = aux;
-            subirMax(heap, p);
+            subirMin(heap, p);
         }
     }
 }
@@ -154,6 +144,11 @@ void removeProcessoTopo(Processo *heap, int* tamanhoAtual, int tipoHeap) {
 
 
 void imprimirProcessos(Processo heapMax, Processo heapMin, int tamanho, int fator) {
+    if (heapVazio(tamanho) == 1) {
+        printf("\nHeap Vazio\n");
+        return;
+    }
+    
     if (fator == 0) {
         printf("Prioridade\n");
         printf("Heap Maximo: ");
